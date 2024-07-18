@@ -1,4 +1,4 @@
-package com.alexfrocha;
+package com.alexfrocha.async;
 
 import java.util.concurrent.CompletableFuture;
 

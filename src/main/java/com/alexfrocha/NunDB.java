@@ -1,23 +1,24 @@
 package com.alexfrocha;
 
+import com.alexfrocha.async.PendingPromise;
+import com.alexfrocha.data.LocalValue;
+import com.alexfrocha.data.Value;
 import com.google.gson.Gson;
 
 import javax.websocket.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @ClientEndpoint
 public class NunDB {
-
     public static final int RECONNECT_TIME = 10;
     private static final String EMPTY = "<Empty>";
+    private static final boolean shouldStoreLocal = true;
+    private static final String LAST_SERVER_KEY = "nundb_$$last_server_";
+    private static final Map<String, LocalValue> memoryDatabase = new HashMap<>();
 
     private Logger logger = Logger.getLogger(NunDB.class.getName());
 
@@ -28,11 +29,12 @@ public class NunDB {
     private String user;
     private String password;
 
+    private int messages = 0;
+    private long start = System.currentTimeMillis();
     private List<Long> ids = new ArrayList<>();
     private List<PendingPromise> pendingPromises = new ArrayList<>();
-    private CompletableFuture<Void> connectionPromise;
+    public CompletableFuture<Void> connectionPromise;
     private Boolean shouldReconnect = false;
-
 
     public NunDB(String databaseURL, String user, String password) {
         this.databaseURL = databaseURL;
@@ -107,22 +109,28 @@ public class NunDB {
                 messageHandler(message);
             }
         });
-
     }
 
     private void messageHandler(String message) {
-        logger.info("Message received: " + message);
-        String[] messageParts = message.split("\\s(.+)|\n");
+//        logger.info("Message received: " + message);
+        String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
         String command = messageParts[0];
-        String value = messageParts.length > 1 ? messageParts[1] : null;
-        String commandMethodName = commandToFunction(command);
-        try {
-            Method method = this.getClass().getDeclaredMethod(commandMethodName, String.class);
-            method.invoke(this, value);
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            logger.severe(commandMethodName + " Handler not implemented");
-        }
 
+        if ("value-version".equals(command)) {
+            String payload = messageParts.length > 1 ? messageParts[1] : "";
+            String[] parts = payload.split("\\s+", 2);
+            String key = parts[1]; // Chave recebida
+            int version = parts.length > 1 ? Integer.parseInt(parts[0]) : -1; // Versão recebida
+
+            // Encontrar a Promise correspondente para completar
+            pendingPromises.stream()
+                    .filter(promise -> promise.getCommand().equals("get-safe") )
+                    .forEach(promise -> {
+                        Object value = new Value(-1, key); // Criar o objeto de valor apropriado
+                        promise.getPromise().complete(value); // Completar a Promise com o valor recebido
+                    });
+
+        }
     }
 
     private String commandToFunction(String command) {
@@ -131,7 +139,34 @@ public class NunDB {
                 .collect(Collectors.joining(""));
     }
 
+    private void resolvePendingValue(String key, int version) {
+        LocalValue localValue = memoryDatabase.get(key);
+        if (localValue != null && localValue.isPending() && localValue.getVersion() == version) {
+            this.storeLocalValue(key, new LocalValue(localValue.getValue(), version, false));
+        }
+    }
+
+    private void storeLocalValue(String key, LocalValue value) {
+        if(shouldStoreLocal) {
+            LocalStorage.setItem(key, value);
+        }
+        if(shouldStoreLocal && value != null && !value.isPending()) {
+            LocalStorage.setItem(LAST_SERVER_KEY + key, value);
+        }
+        memoryDatabase.put(key, value);
+    }
+
+    private LocalValue getLocalValue(String key) {
+        if (shouldStoreLocal) {
+            return LocalStorage.getItem(key);
+        }
+        return null;
+    }
+
     private String objToValue(Object obj) {
+        if (obj instanceof Value) {
+            return ((Value) obj).toString();
+        }
         return obj.toString().replaceAll("\\s", "^");
     }
 
@@ -166,6 +201,96 @@ public class NunDB {
         }
     }
 
+    private long nextMessageId() {
+        this.messages += 1;
+        return this.start + this.messages;
+    }
+
+    public CompletableFuture<Object> getValueSafe(String key) {
+        CompletableFuture<Object> resultPromise = new CompletableFuture<>();
+        // Criar e registrar uma nova promise para este get-safe
+        PendingPromise pendingPromise = createPendingPromise(key, "get-safe");
+        pendingPromises.add(pendingPromise);
+
+        // Enviar comando para o servidor
+        this.connectionPromise.thenAccept(v -> {
+            this.session.getAsyncRemote().sendText("get-safe " + key);
+        });
+
+        // Aguardar a conclusão da promise correspondente no messageHandler
+        pendingPromise.getPromise().thenAccept(value -> {
+            resolvePendingValue(key, -1); // Ajustar o valor de versão conforme necessário
+            resultPromise.complete(value); // Completar a promise do resultado com o valor recebido
+        });
+
+        // Criar e registrar uma nova promise para confirmar o envio do get-safe
+        PendingPromise pendingPromiseAck = createPendingPromise(key, "get-safe-sent");
+        pendingPromises.add(pendingPromiseAck);
+
+        // Aguardar a conclusão da promise correspondente no messageHandler
+        pendingPromiseAck.getPromise().thenRun(() -> {
+            // Apenas para confirmar que a mensagem foi enviada
+            logger.info("get-safe message sent for key: " + key);
+        });
+
+        // Combinar ambas as promises para esperar a conclusão de ambas antes de retornar
+        CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise())
+                .thenApply(values -> resultPromise.join());
+
+        return resultPromise;
+    }
+
+
+    public CompletableFuture<Object> get(String key) {
+        return this.getValueSafe(key);
+    }
+
+    public CompletableFuture<List<String>> keys(String prefix) {
+        checkIfConnectionIsReady();
+        return this.connectionPromise.thenCompose(v -> {
+            this.session.getAsyncRemote().sendText("keys " + prefix);
+            PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
+            PendingPromise pendingPromiseAck = this.createPendingPromise(prefix, "keys-sent");
+            return CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise()).thenApply(values -> {
+                Object result = pendingPromise.getPromise().join();
+                if (result instanceof List) {
+                    return (List<String>) result;
+                } else {
+                    throw new IllegalStateException("Expected List<String> but got " + result.getClass().getName());
+                }
+            });
+        });
+    }
+
+
+
+    public CompletableFuture<Void> set(String name, String value) {
+        return this.setValue(name, value);
+    }
+
+    public CompletableFuture<Void> setValue(String name, String value) {
+        checkIfConnectionIsReady();
+        return this.setValueSafe(name, value, -1, false);
+    }
+
+    public CompletableFuture<Void> setValueSafe(String name, String value, int version, boolean basicType) {
+        checkIfConnectionIsReady();
+        LocalValue localValue = this.getLocalValue(name);
+        Value objValue = new Value(this.nextMessageId(), value);
+        int ver = localValue == null ? version : localValue.getVersion();
+        this.storeLocalValue(name, new LocalValue(objValue, ver, true));
+        this.ids.add(objValue.getId());
+        return this.connectionPromise.thenCompose(v -> {
+            String command = "set-safe " + name + " " + ver + " " + (basicType ? value : objToValue(objValue));
+            this.session.getAsyncRemote().sendText(command);
+            PendingPromise pendingPromise = this.createPendingPromise(name, "set");
+            return pendingPromise.getPromise().thenApply(res -> {
+                this.resolvePendingValue(name, ver);
+                return null;
+            });
+        });
+    }
+
     public CompletableFuture<Void> createDb(String name, String token) {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
@@ -186,12 +311,12 @@ public class NunDB {
         });
     }
 
-    public CompletableFuture<Object> useDb(String database, String token) {
+    public CompletableFuture<Object> useDb(String name, String token) {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
-           String command = "use-db " + database + " " + token;
+           String command = "use-db " + name + " " + token;
            this.session.getAsyncRemote().sendText(command);
-           this.databaseName = database;
+           this.databaseName = name;
            this.databaseToken = token;
            PendingPromise pendingPromise = this.createPendingPromise(this.databaseName, "use-db");
            return pendingPromise.getPromise();
