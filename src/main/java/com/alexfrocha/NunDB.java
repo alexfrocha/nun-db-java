@@ -37,8 +37,9 @@ public class NunDB {
     private List<PendingPromise> pendingPromises = new ArrayList<>();
     private Boolean shouldReconnect = false;
     private Map<String, List<Watcher>> watchers = new HashMap<>();
-    public CompletableFuture<Void> connectionPromise;
+    private CompletableFuture<Void> connectionPromise;
 
+    private boolean shouldShowLogs = false;
 
     public NunDB(String databaseURL, String user, String password) {
         this.databaseURL = databaseURL;
@@ -73,6 +74,10 @@ public class NunDB {
             return;
         }
         this.session.getAsyncRemote().sendText(command);
+    }
+
+    public void showLogs(boolean status) {
+        this.shouldShowLogs = status;
     }
 
     private PendingPromise createPendingPromise(String key, String command) {
@@ -124,16 +129,31 @@ public class NunDB {
     }
 
     private void messageHandler(String message) {
-//        logger.info("received message: " + message);
+
+        if(shouldShowLogs) logger.info("received message: " + message);
+
         String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
         String command = messageParts[0];
 
+        if ("keys".equals(command)) {
+            String payload = messageParts.length > 1 ? messageParts[1] : "";
+            String[] rawParts = payload.split(",");
+
+            List<String> keys = Arrays.stream(rawParts)
+                    .filter(part -> !part.isEmpty())
+                    .collect(Collectors.toList());
+
+            pendingPromises.stream()
+                    .filter(promise -> "keys".equals(promise.getCommand()))
+                    .forEach(promise -> {
+                        promise.getPromise().complete(keys);
+                    });
+        }
         if ("value-version".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] parts = payload.split("\\s+", 2);
             String key = parts[1];
             int version = parts.length > 1 ? Integer.parseInt(parts[0]) : -1;
-
             pendingPromises.stream()
                     .filter(promise -> promise.getCommand().equals("get-safe"))
                     .forEach(promise -> {
@@ -145,7 +165,6 @@ public class NunDB {
             String payloads = messageParts.length > 1 ? messageParts[1] : "";
             String[] parts = payloads.split("\\s+");
             String value = parts[(int) (Arrays.stream(parts).count() - 1)];
-            String key = parts[0];
             pendingPromises.stream()
                     .filter(promise -> promise.getCommand().equals("watch-sent"))
                     .forEach(promise -> {
@@ -252,32 +271,25 @@ public class NunDB {
 
     public CompletableFuture<Object> getValueSafe(String key) {
         CompletableFuture<Object> resultPromise = new CompletableFuture<>();
-        // Criar e registrar uma nova promise para este get-safe
         PendingPromise pendingPromise = createPendingPromise(key, "get-safe");
         pendingPromises.add(pendingPromise);
 
-        // Enviar comando para o servidor
         this.connectionPromise.thenAccept(v -> {
             this.sendCommand("get-safe " + key);
         });
 
-        // Aguardar a conclusão da promise correspondente no messageHandler
         pendingPromise.getPromise().thenAccept(value -> {
-            resolvePendingValue(key, -1); // Ajustar o valor de versão conforme necessário
-            resultPromise.complete(value); // Completar a promise do resultado com o valor recebido
+            resolvePendingValue(key, -1);
+            resultPromise.complete(value);
         });
 
-        // Criar e registrar uma nova promise para confirmar o envio do get-safe
         PendingPromise pendingPromiseAck = createPendingPromise(key, "get-safe-sent");
         pendingPromises.add(pendingPromiseAck);
 
-        // Aguardar a conclusão da promise correspondente no messageHandler
         pendingPromiseAck.getPromise().thenRun(() -> {
-            // Apenas para confirmar que a mensagem foi enviada
             logger.info("get-safe message sent for key: " + key);
         });
 
-        // Combinar ambas as promises para esperar a conclusão de ambas antes de retornar
         CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise())
                 .thenApply(values -> resultPromise.join());
 
@@ -290,19 +302,13 @@ public class NunDB {
 
     public CompletableFuture<List<String>> keys(String prefix) {
         checkIfConnectionIsReady();
-        return this.connectionPromise.thenCompose(v -> {
-            this.sendCommand("keys " + prefix);
-            PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
-            PendingPromise pendingPromiseAck = this.createPendingPromise(prefix, "keys-sent");
-            return CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise()).thenApply(values -> {
-                Object result = pendingPromise.getPromise().join();
-                if (result instanceof List) {
-                    return (List<String>) result;
-                } else {
-                    throw new IllegalStateException("Expected List<String> but got " + result.getClass().getName());
-                }
-            });
+        CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
+        PendingPromise pendingPromise = createPendingPromise(prefix, "keys");
+        this.sendCommand("keys " + prefix);
+        pendingPromise.getPromise().thenAccept(result -> {
+            resultPromise.complete((List<String>) result);
         });
+        return resultPromise;
     }
 
 
