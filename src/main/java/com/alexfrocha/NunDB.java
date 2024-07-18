@@ -1,6 +1,7 @@
 package com.alexfrocha;
 
 import com.alexfrocha.async.PendingPromise;
+import com.alexfrocha.async.interfaces.Watcher;
 import com.alexfrocha.data.LocalValue;
 import com.alexfrocha.data.Value;
 import com.google.gson.Gson;
@@ -31,10 +32,13 @@ public class NunDB {
 
     private int messages = 0;
     private long start = System.currentTimeMillis();
+    private boolean isArbiter = false;
     private List<Long> ids = new ArrayList<>();
     private List<PendingPromise> pendingPromises = new ArrayList<>();
-    public CompletableFuture<Void> connectionPromise;
     private Boolean shouldReconnect = false;
+    private Map<String, List<Watcher>> watchers = new HashMap<>();
+    public CompletableFuture<Void> connectionPromise;
+
 
     public NunDB(String databaseURL, String user, String password) {
         this.databaseURL = databaseURL;
@@ -61,6 +65,14 @@ public class NunDB {
         } catch (Exception e) {
             logger.severe(e.getMessage());
         }
+    }
+
+    private void sendCommand(String command) {
+        if (command == null) {
+            logger.severe("INSERT A COMMAND! NOT A NULL");
+            return;
+        }
+        this.session.getAsyncRemote().sendText(command);
     }
 
     private PendingPromise createPendingPromise(String key, String command) {
@@ -112,24 +124,33 @@ public class NunDB {
     }
 
     private void messageHandler(String message) {
-//        logger.info("Message received: " + message);
+//        logger.info("received message: " + message);
         String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
         String command = messageParts[0];
 
         if ("value-version".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] parts = payload.split("\\s+", 2);
-            String key = parts[1]; // Chave recebida
-            int version = parts.length > 1 ? Integer.parseInt(parts[0]) : -1; // Versão recebida
+            String key = parts[1];
+            int version = parts.length > 1 ? Integer.parseInt(parts[0]) : -1;
 
-            // Encontrar a Promise correspondente para completar
             pendingPromises.stream()
-                    .filter(promise -> promise.getCommand().equals("get-safe") )
+                    .filter(promise -> promise.getCommand().equals("get-safe"))
                     .forEach(promise -> {
-                        Object value = new Value(-1, key); // Criar o objeto de valor apropriado
-                        promise.getPromise().complete(value); // Completar a Promise com o valor recebido
+                        Object value = new Value(version, key);
+                        promise.getPromise().complete(value);
                     });
-
+        }
+        if ("changed".equals(command)) {
+            String payloads = messageParts.length > 1 ? messageParts[1] : "";
+            String[] parts = payloads.split("\\s+");
+            String value = parts[(int) (Arrays.stream(parts).count() - 1)];
+            String key = parts[0];
+            pendingPromises.stream()
+                    .filter(promise -> promise.getCommand().equals("watch-sent"))
+                    .forEach(promise -> {
+                        executeAllWatchers(promise.getKey(), value);
+                    });
         }
     }
 
@@ -174,8 +195,6 @@ public class NunDB {
         return (value != null && !value.equals(EMPTY)) ? new Gson().fromJson(value.replace("^", " "), Object.class) : null;
     }
 
-    //
-
     public void goOffline() {
         this.shouldReconnect = false;
         try {
@@ -188,6 +207,31 @@ public class NunDB {
     public void goOnline() {
         this.shouldReconnect = true;
         this.connect();
+    }
+
+    public void addWatch(String name, Watcher cb) {
+        checkIfConnectionIsReady();
+        this.sendCommand("watch " + name);
+        this.createPendingPromise(name, "watch-sent");
+        this.watchers.computeIfAbsent(name, k -> new ArrayList<>()).add(cb);
+    }
+
+    public void removeWatcher(String name) {
+        this.sendCommand("unwatch " + name);
+        this.watchers.remove(name);
+    }
+
+    public void showWatchers() {
+        System.out.println(this.watchers);
+    }
+
+    public void executeAllWatchers(String key, Object data) {
+        List<Watcher> watchersList = this.watchers.get(key);
+        if (watchersList != null) {
+            for (Watcher cb : watchersList) {
+                cb.apply(data);
+            }
+        }
     }
 
     private void reConnect() {
@@ -214,7 +258,7 @@ public class NunDB {
 
         // Enviar comando para o servidor
         this.connectionPromise.thenAccept(v -> {
-            this.session.getAsyncRemote().sendText("get-safe " + key);
+            this.sendCommand("get-safe " + key);
         });
 
         // Aguardar a conclusão da promise correspondente no messageHandler
@@ -240,7 +284,6 @@ public class NunDB {
         return resultPromise;
     }
 
-
     public CompletableFuture<Object> get(String key) {
         return this.getValueSafe(key);
     }
@@ -248,7 +291,7 @@ public class NunDB {
     public CompletableFuture<List<String>> keys(String prefix) {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
-            this.session.getAsyncRemote().sendText("keys " + prefix);
+            this.sendCommand("keys " + prefix);
             PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
             PendingPromise pendingPromiseAck = this.createPendingPromise(prefix, "keys-sent");
             return CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise()).thenApply(values -> {
@@ -282,7 +325,7 @@ public class NunDB {
         this.ids.add(objValue.getId());
         return this.connectionPromise.thenCompose(v -> {
             String command = "set-safe " + name + " " + ver + " " + (basicType ? value : objToValue(objValue));
-            this.session.getAsyncRemote().sendText(command);
+            this.sendCommand(command);
             PendingPromise pendingPromise = this.createPendingPromise(name, "set");
             return pendingPromise.getPromise().thenApply(res -> {
                 this.resolvePendingValue(name, ver);
@@ -294,7 +337,7 @@ public class NunDB {
     public CompletableFuture<Void> createDb(String name, String token) {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
-            this.session.getAsyncRemote().sendText("create-db " + name + " " + token);
+            this.sendCommand("create-db " + name + " " + token);
             logger.info( name + " DB CREATED");
             this.databaseName = name;
             this.databaseToken = token;
@@ -305,7 +348,7 @@ public class NunDB {
     public CompletableFuture<Void> auth(String user, String password) {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
-            this.session.getAsyncRemote().sendText("auth " + user + " " + password);
+            this.sendCommand("auth " + user + " " + password);
             logger.info("LOGGED [" + user + ", " + password + "]");
             return CompletableFuture.completedFuture(null);
         });
@@ -315,7 +358,7 @@ public class NunDB {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
            String command = "use-db " + name + " " + token;
-           this.session.getAsyncRemote().sendText(command);
+           this.sendCommand(command);
            this.databaseName = name;
            this.databaseToken = token;
            PendingPromise pendingPromise = this.createPendingPromise(this.databaseName, "use-db");
