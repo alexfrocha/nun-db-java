@@ -54,6 +54,7 @@ public class NunDB {
         this.databaseToken = databaseToken;
         this.user = user;
         this.password = password;
+        this.useDb(this.databaseName, this.databaseToken);
         this.connect();
     }
 
