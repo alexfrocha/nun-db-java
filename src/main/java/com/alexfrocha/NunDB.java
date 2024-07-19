@@ -240,6 +240,14 @@ public class NunDB {
         this.watchers.remove(name);
     }
 
+    public void increment(String name, String value) {
+        this.sendCommand("increment " + name + " " + value);
+    }
+
+    public void remove(String key) {
+        this.sendCommand("remove " + key);
+    }
+
     public void showWatchers() {
         System.out.println(this.watchers);
     }

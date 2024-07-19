@@ -9,8 +9,17 @@ public class Main {
         NunDB db = new NunDB("ws://localhost:3012", "alex", "alex");
 //        db.showLogs(true);
         db.useDb("aware", "aware");
-        Watcher print = System.out::println;
-        List<String> keys = db.keys("").join();
-        System.out.println(keys);
+
+        db.set("dizoiprovideo", "1");
+        Object OiVideo = db.get("dizoiprovideo").join();
+
+        db.addWatch("dizoiprovideo", e -> {
+           System.out.println("[WATCH] 'dizoiprovideo' foi alterado: " + e);
+        });
+        db.removeWatcher("dizoiprovideo");
+
+        System.out.println("[GET] o valor de 'dizoiprovideo' é: " + OiVideo);
+
+        while (true) {}
     }
 }
