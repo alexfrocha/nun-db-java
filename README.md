@@ -68,6 +68,7 @@ db.createUser("joao", "123")
 I'm still confused what this do, but i implemented:
 ```java
 db.snapshot(true, "db1", "db2", "db3", "db4", "db5", "db6") // countless databases if u want to
+db.snapshot(true) // when just boolean is given, the snapshot take the actual database in use
 ```
 ### [WARNING]: I'm still working on Permissions, so dont occurs the permission verification per method yet
 How to set permissions of a user?
