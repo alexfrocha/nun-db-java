@@ -15,6 +15,8 @@ public class Main {
         db.set("dizoiprovideo", "oi video 1");
         db.set("dizoiprovideo", "oi video 2");
 
+        db.setPermissions("alex", "dizoiprovideo", Permissions.READ, Permissions.INCREMENT);
+
         while(true) {}
     }
 }
