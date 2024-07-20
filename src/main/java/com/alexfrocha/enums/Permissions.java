@@ -1,22 +1,22 @@
 package com.alexfrocha.enums;
 
 public enum Permissions {
-    READ('q'),
-    WRITE('w'),
-    INCREMENT('i'),
-    REMOVE('x');
+    READ("r"),
+    WRITE("w"),
+    INCREMENT("i"),
+    REMOVE("x");
 
-    private char value;
-    Permissions(char value) {
+    private String value;
+    Permissions(String value) {
         this.value = value;
     }
 
-    public char getValue() {
+    public String getValue() {
         return this.value;
     }
 
     public static boolean contains(String permissions, Permissions permission) {
-        return permissions.contains("" + permission.getValue());
+        return permissions.contains(permission.getValue());
     };
 
 }
