@@ -93,6 +93,10 @@ public class NunDB {
             logger.severe("CONNECTION IS NOT READY");
             throw new IllegalStateException("Connection is not ready");
         }
+
+    }
+
+    private void checkIfDatabaseIsCreated() {
         if(this.databaseName == null && this.databaseToken == null) {
             logger.severe("Connect to a DB with useDb(name, token)");
             throw new IllegalStateException("Connect to a DB with useDb(name, token)");
@@ -139,16 +143,22 @@ public class NunDB {
         if(shouldShowLogs) logger.info("received message: " + message);
 
 
-        String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
+        String[] messageParts = message.split("\\s+", 2);
         String command = messageParts[0];
         if ("dbs-list".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] rawDatabases = payload.split("\n");
 
-            List<String> databases = Arrays.stream(rawDatabases).collect(Collectors.toList());
+            List<String> databases = Arrays.stream(rawDatabases)
+                    .map(db -> db.split(" : ")[0])
+                    .collect(Collectors.toList());
+
+
             pendingPromises.stream()
                     .filter(promise -> "dbs-list".equals(promise.getCommand()))
-                    .forEach(promise -> {promise.getPromise().complete(databases);});
+                    .forEach(promise -> {
+                        promise.getPromise().complete(databases);
+                    });
         }
         if ("cluster-state".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
@@ -274,7 +284,7 @@ public class NunDB {
         this.watchers.remove(name);
     }
 
-    public void increment(String name, String value) {
+    public void increment(String name, Number value) {
         checkIfConnectionIsReady();
         this.sendCommand("increment " + name + " " + value);
     }
@@ -465,16 +475,19 @@ public class NunDB {
 
     public CompletableFuture<Void> createDb(String name, String token) {
         checkIfConnectionIsReady();
+        List<String> databases = getAllDatabases().join();
         return this.connectionPromise.thenCompose(v -> {
-            this.sendCommand("create-db " + name + " " + token);
-            logger.info( name + " DB CREATED");
-            this.databaseName = name;
-            this.databaseToken = token;
+            if(!databases.contains(name)) {
+                this.sendCommand("create-db " + name + " " + token);
+                logger.info( name + " DB CREATED");
+                this.databaseName = name;
+                this.databaseToken = token;
+            }
             return CompletableFuture.completedFuture(null);
         });
     }
 
-    public CompletableFuture<Void> auth(String user, String password) {
+    private CompletableFuture<Void> auth(String user, String password) {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("auth " + user + " " + password);
