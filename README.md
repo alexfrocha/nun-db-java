@@ -71,3 +71,7 @@ How to set permissions of a user?
 db.setPermissions("jorge", "test", Permissions.WRITE, Permissions.READ); // more semantic way, but only can do for one key
 db.setPermissions("jorge", "rw test"); // mr. robot way, but u can do like a lot of keys, ex: "rw test|ri age"
 ```
+Struggling with some problem? try this and check it:
+```java
+db.showLogs(true)
+```
