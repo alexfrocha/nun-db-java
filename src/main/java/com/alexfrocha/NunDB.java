@@ -58,7 +58,7 @@ public class NunDB {
         this.connect();
     }
 
-    public void connect() {
+    private void connect() {
         this.connectionPromise = new CompletableFuture<>();
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
@@ -275,7 +275,7 @@ public class NunDB {
         System.out.println(this.watchers);
     }
 
-    public void executeAllWatchers(String key, Object data) {
+    private void executeAllWatchers(String key, Object data) {
         checkIfConnectionIsReady();
         List<Watcher> watchersList = this.watchers.get(key);
         if (watchersList != null) {
