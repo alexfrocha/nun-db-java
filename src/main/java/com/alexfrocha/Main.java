@@ -10,5 +10,8 @@ public class Main {
         db.showLogs(true);
         db.useDb("aware", "aware");
         db.set("dizoiprovideo", "1");
+        db.set("dizoiprovideo", "2");
+        Object a = db.getClusterState().join();
+        System.out.println(a);
     }
 }

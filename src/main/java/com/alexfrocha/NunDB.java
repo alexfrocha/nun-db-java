@@ -136,6 +136,18 @@ public class NunDB {
         String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
         String command = messageParts[0];
 
+        if ("cluster-state".equals(command)) {
+            String payload = messageParts.length > 1 ? messageParts[1] : "";
+            String[] rawClusters = payload.replace(" ", "").replace(",", "").split(",");
+
+            List<String> clusters = Arrays.stream(rawClusters)
+                            .filter(part -> !part.isEmpty())
+                            .collect(Collectors.toList());
+
+            pendingPromises.stream()
+                    .filter(promise -> "cluster-state".equals(promise.getCommand()))
+                    .forEach(promise -> {promise.getPromise().complete(clusters);});
+        }
         if ("keys".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] rawParts = payload.split(",");
@@ -292,7 +304,7 @@ public class NunDB {
     public CompletableFuture<Object> getValueSafe(String key) {
         checkIfConnectionIsReady();
         CompletableFuture<Object> resultPromise = new CompletableFuture<>();
-        PendingPromise pendingPromise = createPendingPromise(key, "get-safe");
+        PendingPromise pendingPromise = this.createPendingPromise(key, "get-safe");
         pendingPromises.add(pendingPromise);
 
         this.connectionPromise.thenAccept(v -> {
@@ -304,7 +316,7 @@ public class NunDB {
             resultPromise.complete(value);
         });
 
-        PendingPromise pendingPromiseAck = createPendingPromise(key, "get-safe-sent");
+        PendingPromise pendingPromiseAck = this.createPendingPromise(key, "get-safe-sent");
         pendingPromises.add(pendingPromiseAck);
 
         pendingPromiseAck.getPromise().thenRun(() -> {
@@ -325,10 +337,22 @@ public class NunDB {
     public CompletableFuture<List<String>> keys(String prefix) {
         checkIfConnectionIsReady();
         CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
-        PendingPromise pendingPromise = createPendingPromise(prefix, "keys");
+        PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
         this.sendCommand("keys " + prefix);
         pendingPromise.getPromise().thenAccept(result -> {
             resultPromise.complete((List<String>) result);
+        });
+        return resultPromise;
+    }
+
+    public CompletableFuture<Object> getClusterState() {
+        checkIfConnectionIsReady();
+        CompletableFuture<Object> resultPromise = new CompletableFuture<>();
+        PendingPromise pendingPromise = this.createPendingPromise("", "cluster-state");
+        pendingPromises.add(pendingPromise);
+        this.sendCommand("cluster-state");
+        pendingPromise.getPromise().thenAccept(result -> {
+            resultPromise.complete(result);
         });
         return resultPromise;
     }
