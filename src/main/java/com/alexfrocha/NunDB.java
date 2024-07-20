@@ -210,6 +210,16 @@ public class NunDB {
         return obj.toString().replaceAll("\\s", "^");
     }
 
+    public void snapshot(boolean reclaimSpace) {
+        checkIfConnectionIsReady();
+        this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
+    }
+
+    public void snapshot(boolean reclaimSpace, String... databases) {
+        checkIfConnectionIsReady();
+        this.sendCommand("snapshot " + reclaimSpace + " " + String.join("|", databases));
+    }
+
     private Object valueToObject(String value) {
         return (value != null && !value.equals(EMPTY)) ? new Gson().fromJson(value.replace("^", " "), Object.class) : null;
     }
@@ -228,6 +238,26 @@ public class NunDB {
         this.connect();
     }
 
+    private void showWatchers() {
+        checkIfConnectionIsReady();
+        System.out.println(this.watchers);
+    }
+
+    private void executeAllWatchers(String key, Object data) {
+        List<Watcher> watchersList = this.watchers.get(key);
+        if (watchersList != null) {
+            for (Watcher cb : watchersList) {
+                cb.apply(data);
+            }
+        }
+    }
+
+    public void removeAllWatchers() {
+        checkIfConnectionIsReady();
+        this.sendCommand("unwatch-all");
+        this.watchers.clear();
+    }
+
     public void addWatch(String name, Watcher cb) {
         checkIfConnectionIsReady();
         this.sendCommand("watch " + name);
@@ -241,24 +271,13 @@ public class NunDB {
     }
 
     public void increment(String name, String value) {
+        checkIfConnectionIsReady();
         this.sendCommand("increment " + name + " " + value);
     }
 
     public void remove(String key) {
+        checkIfConnectionIsReady();
         this.sendCommand("remove " + key);
-    }
-
-    public void showWatchers() {
-        System.out.println(this.watchers);
-    }
-
-    public void executeAllWatchers(String key, Object data) {
-        List<Watcher> watchersList = this.watchers.get(key);
-        if (watchersList != null) {
-            for (Watcher cb : watchersList) {
-                cb.apply(data);
-            }
-        }
     }
 
     private void reConnect() {

@@ -1,0 +1,13 @@
+setprimary,
+election-win, 
+join, 
+replicate-since, 
+ack, 
+cluster-state, 
+metrics-state, 
+debug, 
+arbiter, 
+create-user, 
+set-permissions, 
+$connections, 
+$conflicts
