@@ -10,5 +10,8 @@ public class Main {
         NunDB db = new NunDB("ws://localhost:3012/", "user-name", "user-pwd");
         db.createDb("aware", "aware");
         db.showLogs(true);
+        db.useDb("aware", "aware");
+        Object databases = db.getAllDatabases().join();
+        System.out.println(databases);
     }
 }
