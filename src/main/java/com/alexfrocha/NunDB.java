@@ -145,6 +145,14 @@ public class NunDB {
 
         String[] messageParts = message.split("\\s+", 2);
         String command = messageParts[0];
+
+        // HEY MAN, SO YOU ARE HERE IN THE SOURCE CODE? GOOD LUCK BRO
+        // JUST KIDDING BTW, I CODE IT TO BE EASY TO READ (I GUESS)
+
+        // HANDLING SPECIFIC RESPONSES
+        // I WANT TO MAKE HERE MORE EASY TO READ IN A CLOSE FUTURE
+        // LIKE A FUNCTION HANDLER, EXAMPLE: allDatabasesHandler()
+
         if ("dbs-list".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] rawDatabases = payload.split("\n");
@@ -210,12 +218,6 @@ public class NunDB {
         }
     }
 
-    private String commandToFunction(String command) {
-        return Arrays.stream(command.trim().split("-/\\s"))
-                .map(c -> c.substring(0, 1).toUpperCase() + c.substring(1))
-                .collect(Collectors.joining(""));
-    }
-
     private void resolvePendingValue(String key, int version) {
         LocalValue localValue = memoryDatabase.get(key);
         if (localValue != null && localValue.isPending() && localValue.getVersion() == version) {
@@ -265,38 +267,56 @@ public class NunDB {
         this.connect();
     }
 
-    public void addWatch(String name, Watcher cb) {
+    public CompletableFuture<Void> addWatch(String name, Watcher cb) {
         checkIfConnectionIsReady();
-        this.sendCommand("watch " + name);
-        this.createPendingPromise(name, "watch-sent");
-        this.watchers.computeIfAbsent(name, k -> new ArrayList<>()).add(cb);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("watch " + name);
+            this.createPendingPromise(name, "watch-sent");
+            this.watchers.computeIfAbsent(name, k -> new ArrayList<>()).add(cb);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void removeAllWatchers() {
+    public CompletableFuture<Void> removeAllWatchers() {
         checkIfConnectionIsReady();
-        this.sendCommand("unwatch-all");
-        this.watchers.clear();
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("unwatch-all");
+            this.watchers.clear();
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void removeWatcher(String name) {
+    public CompletableFuture<Void> removeWatcher(String name) {
         checkIfConnectionIsReady();
-        this.sendCommand("unwatch " + name);
-        this.watchers.remove(name);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("unwatch " + name);
+            this.watchers.remove(name);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void increment(String name, Number value) {
+    public CompletableFuture<Void> increment(String name, Number value) {
         checkIfConnectionIsReady();
-        this.sendCommand("increment " + name + " " + value);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("increment " + name + " " + value);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void remove(String key) {
+    public CompletableFuture<Void> remove(String key) {
         checkIfConnectionIsReady();
-        this.sendCommand("remove " + key);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("remove " + key);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void showWatchers() {
+    public CompletableFuture<Void> showWatchers() {
         checkIfConnectionIsReady();
-        System.out.println(this.watchers);
+        return this.connectionPromise.thenCompose(v -> {
+            System.out.println(this.watchers);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
     private void executeAllWatchers(String key, Object data) {
@@ -353,22 +373,31 @@ public class NunDB {
         return resultPromise;
     }
 
-    public void createUser(String username, String password) {
+    public CompletableFuture<Void> createUser(String username, String password) {
         checkIfConnectionIsReady();
-        this.sendCommand("create-user " + username + " " + password);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("create-user " + username + " " + password);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void setPermissions(String username, String payload) {
+    public CompletableFuture<Void> setPermissions(String username, String payload) {
         checkIfConnectionIsReady();
-        this.sendCommand("set-permissions " + payload);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("set-permissions " + payload);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void setPermissions(String username, String key, Permissions... permissions) {
+    public CompletableFuture<Void> setPermissions(String username, String key, Permissions... permissions) {
         checkIfConnectionIsReady();
-        List<String> permissionsValues = Arrays.stream(permissions).map(e -> e.getValue()).collect(Collectors.toList());
-        String command = "set-permissions " + username + " " + String.join("", permissionsValues) + " " + key;
-        System.out.println(command);
-        this.sendCommand(command);
+        return this.connectionPromise.thenCompose(v -> {
+            List<String> permissionsValues = Arrays.stream(permissions).map(e -> e.getValue()).collect(Collectors.toList());
+            String command = "set-permissions " + username + " " + String.join("", permissionsValues) + " " + key;
+            System.out.println(command);
+            this.sendCommand(command);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
 
@@ -508,14 +537,22 @@ public class NunDB {
         });
     }
 
-    public void snapshot(boolean reclaimSpace, String... databases) {
+    public CompletableFuture<Void> snapshot(boolean reclaimSpace, String... databases) {
         checkIfConnectionIsReady();
-        this.sendCommand("snapshot " + reclaimSpace + " " + String.join("|", databases));
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("snapshot " + reclaimSpace + " " + String.join("|", databases));
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
-    public void snapshot(boolean reclaimSpace) {
+    public CompletableFuture<Void> snapshot(boolean reclaimSpace) {
         checkIfConnectionIsReady();
-        this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
+        return this.connectionPromise.thenCompose(v -> {
+            this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
+            return CompletableFuture.completedFuture(null);
+        });
+
+
     }
 
 }
