@@ -54,6 +54,7 @@ public class NunDB {
         this.databaseToken = databaseToken;
         this.user = user;
         this.password = password;
+        this.useDb(this.databaseName, this.databaseToken);
         this.connect();
     }
 
@@ -210,16 +211,6 @@ public class NunDB {
         return obj.toString().replaceAll("\\s", "^");
     }
 
-    public void snapshot(boolean reclaimSpace) {
-        checkIfConnectionIsReady();
-        this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
-    }
-
-    public void snapshot(boolean reclaimSpace, String... databases) {
-        checkIfConnectionIsReady();
-        this.sendCommand("snapshot " + reclaimSpace + " " + String.join("|", databases));
-    }
-
     private Object valueToObject(String value) {
         return (value != null && !value.equals(EMPTY)) ? new Gson().fromJson(value.replace("^", " "), Object.class) : null;
     }
@@ -238,18 +229,11 @@ public class NunDB {
         this.connect();
     }
 
-    private void showWatchers() {
+    public void addWatch(String name, Watcher cb) {
         checkIfConnectionIsReady();
-        System.out.println(this.watchers);
-    }
-
-    private void executeAllWatchers(String key, Object data) {
-        List<Watcher> watchersList = this.watchers.get(key);
-        if (watchersList != null) {
-            for (Watcher cb : watchersList) {
-                cb.apply(data);
-            }
-        }
+        this.sendCommand("watch " + name);
+        this.createPendingPromise(name, "watch-sent");
+        this.watchers.computeIfAbsent(name, k -> new ArrayList<>()).add(cb);
     }
 
     public void removeAllWatchers() {
@@ -258,14 +242,8 @@ public class NunDB {
         this.watchers.clear();
     }
 
-    public void addWatch(String name, Watcher cb) {
-        checkIfConnectionIsReady();
-        this.sendCommand("watch " + name);
-        this.createPendingPromise(name, "watch-sent");
-        this.watchers.computeIfAbsent(name, k -> new ArrayList<>()).add(cb);
-    }
-
     public void removeWatcher(String name) {
+        checkIfConnectionIsReady();
         this.sendCommand("unwatch " + name);
         this.watchers.remove(name);
     }
@@ -278,6 +256,21 @@ public class NunDB {
     public void remove(String key) {
         checkIfConnectionIsReady();
         this.sendCommand("remove " + key);
+    }
+
+    public void showWatchers() {
+        checkIfConnectionIsReady();
+        System.out.println(this.watchers);
+    }
+
+    public void executeAllWatchers(String key, Object data) {
+        checkIfConnectionIsReady();
+        List<Watcher> watchersList = this.watchers.get(key);
+        if (watchersList != null) {
+            for (Watcher cb : watchersList) {
+                cb.apply(data);
+            }
+        }
     }
 
     private void reConnect() {
@@ -297,6 +290,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Object> getValueSafe(String key) {
+        checkIfConnectionIsReady();
         CompletableFuture<Object> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = createPendingPromise(key, "get-safe");
         pendingPromises.add(pendingPromise);
@@ -324,6 +318,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Object> get(String key) {
+        checkIfConnectionIsReady();
         return this.getValueSafe(key);
     }
 
@@ -345,7 +340,6 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> setValue(String name, String value) {
-        checkIfConnectionIsReady();
         return this.setValueSafe(name, value, -1, false);
     }
 
@@ -397,6 +391,16 @@ public class NunDB {
            PendingPromise pendingPromise = this.createPendingPromise(this.databaseName, "use-db");
            return pendingPromise.getPromise();
         });
+    }
+
+    public void snapshot(boolean reclaimSpace, String... databases) {
+        checkIfConnectionIsReady();
+        this.sendCommand("snapshot " + reclaimSpace + " " + String.join("|", databases));
+    }
+
+    public void snapshot(boolean reclaimSpace) {
+        checkIfConnectionIsReady();
+        this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
     }
 
 }
