@@ -334,16 +334,50 @@ public class NunDB {
         return this.getValueSafe(key);
     }
 
-    public CompletableFuture<List<String>> keys(String prefix) {
+    public CompletableFuture<List<String>> allKeys() {
         checkIfConnectionIsReady();
         CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
-        PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
-        this.sendCommand("keys " + prefix);
+        PendingPromise pendingPromise = this.createPendingPromise("", "keys");
+        this.sendCommand("keys ");
         pendingPromise.getPromise().thenAccept(result -> {
             resultPromise.complete((List<String>) result);
         });
         return resultPromise;
     }
+
+    public CompletableFuture<List<String>> keysStartingWith(String prefix) {
+        checkIfConnectionIsReady();
+        CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
+        PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
+        this.sendCommand("keys " + prefix + "*");
+        pendingPromise.getPromise().thenAccept(result -> {
+            resultPromise.complete((List<String>) result);
+        });
+        return resultPromise;
+    }
+
+    public CompletableFuture<List<String>> keysEndingWith(String suffix) {
+        checkIfConnectionIsReady();
+        CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
+        PendingPromise pendingPromise = this.createPendingPromise(suffix, "keys");
+        this.sendCommand("keys *" + suffix);
+        pendingPromise.getPromise().thenAccept(result -> {
+            resultPromise.complete((List<String>) result);
+        });
+        return resultPromise;
+    }
+
+    public CompletableFuture<List<String>> keysContains(String supposedText) {
+        checkIfConnectionIsReady();
+        CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
+        PendingPromise pendingPromise = this.createPendingPromise(supposedText, "keys");
+        this.sendCommand("keys " + supposedText);
+        pendingPromise.getPromise().thenAccept(result -> {
+            resultPromise.complete((List<String>) result);
+        });
+        return resultPromise;
+    }
+
 
     public CompletableFuture<Object> getClusterState() {
         checkIfConnectionIsReady();
