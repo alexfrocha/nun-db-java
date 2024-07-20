@@ -238,9 +238,7 @@ public class NunDB {
 
     public void removeAllWatchers() {
         checkIfConnectionIsReady();
-        for (String name : this.watchers.keySet()) {
-            this.sendCommand("unwatch " + name);
-        }
+        this.sendCommand("unwatch-all");
         this.watchers.clear();
     }
 
@@ -393,6 +391,16 @@ public class NunDB {
            PendingPromise pendingPromise = this.createPendingPromise(this.databaseName, "use-db");
            return pendingPromise.getPromise();
         });
+    }
+
+    public void snapshot(boolean reclaimSpace, String... databases) {
+        checkIfConnectionIsReady();
+        this.sendCommand("snapshot " + reclaimSpace + " " + String.join("|", databases));
+    }
+
+    public void snapshot(boolean reclaimSpace) {
+        checkIfConnectionIsReady();
+        this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
     }
 
 }
