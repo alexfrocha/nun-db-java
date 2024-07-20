@@ -335,10 +335,17 @@ public class NunDB {
         this.sendCommand("create-user " + username + " " + password);
     }
 
+    public void setPermissions(String username, String payload) {
+        checkIfConnectionIsReady();
+        this.sendCommand("set-permissions " + payload);
+    }
+
     public void setPermissions(String username, String key, Permissions... permissions) {
         checkIfConnectionIsReady();
         List<String> permissionsValues = Arrays.stream(permissions).map(e -> e.getValue()).collect(Collectors.toList());
-        this.sendCommand("set-permissions " + username + " " + String.join("", permissionsValues));
+        String command = "set-permissions " + username + " " + String.join("", permissionsValues) + " " + key;
+        System.out.println(command);
+        this.sendCommand(command);
     }
 
 
