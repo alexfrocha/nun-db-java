@@ -6,7 +6,7 @@ I did not upload on maven/gradle for now, but i'll do, i promise.
 
 Starting the instance of the client:
 ```java
-NunDB db = new NunDB("ws://ws.nundb.org", "alex", "alex");
+NunDB db = new NunDB("ws://ws.nundb.org", "name", "password");
 db.createDb("databaseName", "databaseToken") // if you don't have a database
 db.useDb("databaseName", "databaseToken");
 ```
