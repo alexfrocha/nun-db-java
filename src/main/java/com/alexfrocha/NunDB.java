@@ -136,7 +136,15 @@ public class NunDB {
 
         String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
         String command = messageParts[0];
+        if ("dbs-list".equals(command)) {
+            String payload = messageParts.length > 1 ? messageParts[1] : "";
+            String[] rawDatabases = payload.split("\n");
 
+            List<String> databases = Arrays.stream(rawDatabases).collect(Collectors.toList());
+            pendingPromises.stream()
+                    .filter(promise -> "dbs-list".equals(promise.getCommand()))
+                    .forEach(promise -> {promise.getPromise().complete(databases);});
+        }
         if ("cluster-state".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] rawClusters = payload.replace(" ", "").replace(",", "").split(",");
@@ -352,6 +360,17 @@ public class NunDB {
     public CompletableFuture<Object> get(String key) {
         checkIfConnectionIsReady();
         return this.getValueSafe(key);
+    }
+
+    public CompletableFuture<List<String>> getAllDatabases() {
+        checkIfConnectionIsReady();
+        CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
+        PendingPromise pendingPromise = this.createPendingPromise("", "dbs-list");
+        this.sendCommand("debug list-dbs");
+        pendingPromise.getPromise().thenAccept(result -> {
+            resultPromise.complete((List<String>) result);
+        });
+        return resultPromise;
     }
 
     public CompletableFuture<List<String>> allKeys() {
