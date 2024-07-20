@@ -329,6 +329,11 @@ public class NunDB {
         return resultPromise;
     }
 
+    public void createUser(String username, String password) {
+        checkIfConnectionIsReady();
+        this.sendCommand("create-user " + username + " " + password);
+    }
+
     public CompletableFuture<Object> get(String key) {
         checkIfConnectionIsReady();
         return this.getValueSafe(key);

@@ -14,6 +14,7 @@ public class Main {
 
         db.set("dizoiprovideo", "oi video 1");
         db.set("dizoiprovideo", "oi video 2");
+        db.createUser("user1", "123");
 
         while(true) {}
     }
