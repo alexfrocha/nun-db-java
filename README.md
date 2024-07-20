@@ -6,7 +6,7 @@ I did not upload on maven/gradle for now, but i'll do, i promise.
 
 Starting the instance of the client:
 ```java
-NunDB db = new NunDB("ws://ws.nundb.org", "alex", "alex");
+NunDB db = new NunDB("ws://ws.nundb.org", "name", "password");
 db.createDb("databaseName", "databaseToken") // if you don't have a database
 db.useDb("databaseName", "databaseToken");
 ```
@@ -64,6 +64,11 @@ if(birthday) {
 How to create a user?
 ```java
 db.createUser("joao", "123")
+```
+Im still confused what this do, but i implemented:
+```java
+db.snapshot(true, "db1", "db2", "db3", "db4", "db5", "db6") // countless databases if u want to
+db.snapshot(true) // when just boolean is given, the snapshot take the actual database in use
 ```
 ### [WARNING]: I'm still working on Permissions, so dont occurs the permission verification per method yet
 How to set permissions of a user?
