@@ -54,6 +54,7 @@ public class NunDB {
         this.databaseToken = databaseToken;
         this.user = user;
         this.password = password;
+        this.useDb(this.databaseName, this.databaseToken);
         this.connect();
     }
 
@@ -235,24 +236,37 @@ public class NunDB {
         this.watchers.computeIfAbsent(name, k -> new ArrayList<>()).add(cb);
     }
 
+    public void removeAllWatchers() {
+        checkIfConnectionIsReady();
+        for (String name : this.watchers.keySet()) {
+            this.sendCommand("unwatch " + name);
+        }
+        this.watchers.clear();
+    }
+
     public void removeWatcher(String name) {
+        checkIfConnectionIsReady();
         this.sendCommand("unwatch " + name);
         this.watchers.remove(name);
     }
 
     public void increment(String name, String value) {
+        checkIfConnectionIsReady();
         this.sendCommand("increment " + name + " " + value);
     }
 
     public void remove(String key) {
+        checkIfConnectionIsReady();
         this.sendCommand("remove " + key);
     }
 
     public void showWatchers() {
+        checkIfConnectionIsReady();
         System.out.println(this.watchers);
     }
 
     public void executeAllWatchers(String key, Object data) {
+        checkIfConnectionIsReady();
         List<Watcher> watchersList = this.watchers.get(key);
         if (watchersList != null) {
             for (Watcher cb : watchersList) {
@@ -278,6 +292,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Object> getValueSafe(String key) {
+        checkIfConnectionIsReady();
         CompletableFuture<Object> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = createPendingPromise(key, "get-safe");
         pendingPromises.add(pendingPromise);
@@ -305,6 +320,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Object> get(String key) {
+        checkIfConnectionIsReady();
         return this.getValueSafe(key);
     }
 
@@ -326,7 +342,6 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> setValue(String name, String value) {
-        checkIfConnectionIsReady();
         return this.setValueSafe(name, value, -1, false);
     }
 
