@@ -93,6 +93,10 @@ public class NunDB {
             logger.severe("CONNECTION IS NOT READY");
             throw new IllegalStateException("Connection is not ready");
         }
+        if(this.databaseName == null && this.databaseToken == null) {
+            logger.severe("Connect to a DB with useDb(name, token)");
+            throw new IllegalStateException("Connect to a DB with useDb(name, token)");
+        }
     }
 
     // WEBSOCKET HANDLER
@@ -133,6 +137,7 @@ public class NunDB {
     private void messageHandler(String message) {
 
         if(shouldShowLogs) logger.info("received message: " + message);
+
 
         String[] messageParts = message.split("\\s+", 2); // Divide a mensagem em duas partes no primeiro espaço em branco
         String command = messageParts[0];
