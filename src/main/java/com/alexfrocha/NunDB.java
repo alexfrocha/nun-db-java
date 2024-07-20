@@ -140,7 +140,7 @@ public class NunDB {
 
     private void messageHandler(String message) {
 
-        if(shouldShowLogs) logger.info("received message: " + message);
+        if(shouldShowLogs && !message.startsWith("ok")) logger.info("received message: " + message);
 
 
         String[] messageParts = message.split("\\s+", 2);
