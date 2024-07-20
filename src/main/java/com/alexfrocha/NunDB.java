@@ -145,6 +145,14 @@ public class NunDB {
 
         String[] messageParts = message.split("\\s+", 2);
         String command = messageParts[0];
+
+        // HEY MAN, SO YOU ARE HERE IN THE SOURCE CODE? GOOD LUCK BRO
+        // JUST KIDDING BTW, I CODE IT TO BE EASY TO READ (I GUESS)
+
+        // HANDLING SPECIFIC RESPONSES
+        // I WANT TO MAKE HERE MORE EASY TO READ IN A CLOSE FUTURE
+        // LIKE A FUNCTION HANDLER, EXAMPLE: allDatabasesHandler()
+
         if ("dbs-list".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
             String[] rawDatabases = payload.split("\n");
