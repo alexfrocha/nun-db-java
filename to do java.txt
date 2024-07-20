@@ -6,7 +6,3 @@ ack,
 metrics-state,
 debug, 
 arbiter, 
-create-user, 
-set-permissions, 
-$connections, 
-$conflicts

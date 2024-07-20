@@ -4,6 +4,7 @@ import com.alexfrocha.async.PendingPromise;
 import com.alexfrocha.async.interfaces.Watcher;
 import com.alexfrocha.data.LocalValue;
 import com.alexfrocha.data.Value;
+import com.alexfrocha.enums.Permissions;
 import com.google.gson.Gson;
 
 import javax.websocket.*;
@@ -333,6 +334,13 @@ public class NunDB {
         checkIfConnectionIsReady();
         this.sendCommand("create-user " + username + " " + password);
     }
+
+    public void setPermissions(String username, String key, Permissions... permissions) {
+        checkIfConnectionIsReady();
+        List<String> permissionsValues = Arrays.stream(permissions).map(e -> e.getValue()).collect(Collectors.toList());
+        this.sendCommand("set-permissions " + username + " " + String.join("", permissionsValues));
+    }
+
 
     public CompletableFuture<Object> get(String key) {
         checkIfConnectionIsReady();
