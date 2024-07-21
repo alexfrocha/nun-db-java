@@ -9,6 +9,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ResponseHandler {
+    public static void invalidAuth(String message) {
+        if (message.contains("invalid auth")) {
+            throw new IllegalStateException("Invalid auth!");
+        }
+    }
     public static void allDatabases(String command, String[] messageParts, List<PendingPromise> pendingPromises) {
         if ("dbs-list".equals(command)) {
             String payload = messageParts.length > 1 ? messageParts[1] : "";
