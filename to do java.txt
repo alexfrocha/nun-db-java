@@ -3,6 +3,7 @@ election-win (idk),
 join (idk),
 replicate-since (idk),
 ack (idk),
+arbiter (idk),
+
 metrics-state (i can do it),
 debug (i think i can do it),
-arbiter (yes, i can),
