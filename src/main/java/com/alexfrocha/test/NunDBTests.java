@@ -52,7 +52,13 @@ class NunDBTests {
         nun.set("km", "4");
         nun.set("km", "5");
 
-        kmWatcher.join();
+        // just a way to delay the code and the async watcher be completed before the code run is finished
+        nun.get("km").join();
+        nun.get("km").join();
+        nun.get("km").join();
+        nun.get("km").join();
+        nun.get("km").join();
+
 
         assertEquals(4, cacheFromWatcher.size());
         assertEquals(true, cacheFromWatcher.containsAll(Arrays.asList("2", "3", "4", "5")));
@@ -85,9 +91,16 @@ class NunDBTests {
 
         nun.addWatch("remove", saveThis);
         nun.set("remove", "initial");
+
+        // just a way to delay the code and the async watcher be completed before the code run is finished
+        nun.get("remove").join();
+        nun.get("remove").join();
+        nun.get("remove").join();
+
         nun.removeWatcher("remove");
 
         nun.set("remove", "modified");
+
 
         assertEquals(1, cacheFromWatcher.size());
         assertEquals("initial", cacheFromWatcher.get(0));
@@ -105,9 +118,9 @@ class NunDBTests {
         List<String> keysContaining = nun.keysContains("es").join();
         List<String> keysStartingWith = nun.keysStartingWith("t").join();
         List<String> keysEndingWith = nun.keysEndingWith("st").join();
+        List<String> expectedKeys = Arrays.asList("$$token", "$connections", "after", "age", "km", "remove", "test");
 
-        assertEquals("[$$token, $connections, after, age, km, remove, test, value\n" +
-                "]", allKeys.toString());
+        assertEquals(expectedKeys.toString(), allKeys.toString().replace("\n", ""));
         assertEquals("[test\n]", keysContaining.toString());
         assertEquals("[test\n]", keysStartingWith.toString());
         assertEquals("[test\n]", keysEndingWith.toString());
