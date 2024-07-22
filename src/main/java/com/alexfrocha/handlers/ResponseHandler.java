@@ -9,6 +9,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ResponseHandler {
+    public static void noDatabaseSelected(String message) {
+        if (message.contains("no-db-selected")) {
+            throw new IllegalStateException("Please select a database with useDb()");
+        }
+    }
+    public static void noValidDatabaseName(String message) {
+        if (message.contains("Not a valid database name")) {
+            throw new IllegalStateException("Database not found on useDb()");
+        }
+    }
     public static void invalidAuth(String message) {
         if (message.contains("invalid auth")) {
             throw new IllegalStateException("Invalid auth!");

@@ -148,6 +148,8 @@ public class NunDB {
         String command = messageParts[0];
 
         ResponseHandler.invalidAuth(message);
+        ResponseHandler.noValidDatabaseName(message);
+        ResponseHandler.noDatabaseSelected(message);
         ResponseHandler.allDatabases(command, messageParts, pendingPromises);
         ResponseHandler.clusterState(command, messageParts, pendingPromises);
         ResponseHandler.keys(command, messageParts, pendingPromises);

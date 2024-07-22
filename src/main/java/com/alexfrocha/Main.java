@@ -10,7 +10,7 @@ public class Main {
         NunDB db = new NunDB("ws://localhost:3012/", "user-name", "user-pwd");
 //        db.showLogs(true);
         db.createDb("aware", "aware");
-        db.useDb("aware", "aware");
+        db.useDb("aware2", "aware");
         db.addWatch("teste", e -> {
             System.out.println("watch: " + e);
         });
@@ -20,6 +20,6 @@ public class Main {
         System.out.println("get: " + db.get("teste").join());
         System.out.println("dbs: " + db.getAllDatabases().join());
         System.out.println("clusters: " + db.getClusterState().join());
-        while(true) {}
+//        while(true) {}
     }
 }
