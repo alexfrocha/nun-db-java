@@ -17,9 +17,6 @@ public class Main {
         db.set("teste", "123123");
         db.set("teste", "123");
         db.set("teste", "8128");
-        System.out.println("get: " + db.get("teste").join());
-        System.out.println("dbs: " + db.getAllDatabases().join());
-        System.out.println("clusters: " + db.getClusterState().join());
-//        while(true) {}
+        while(true) {}
     }
 }
