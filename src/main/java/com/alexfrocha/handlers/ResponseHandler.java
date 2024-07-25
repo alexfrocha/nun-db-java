@@ -89,8 +89,9 @@ public class ResponseHandler {
             String payloads = messageParts.length > 1 ? messageParts[1] : "";
             String[] parts = payloads.split("\\s+");
             String value = parts[(int) (Arrays.stream(parts).count() - 1)];
+            String key = parts[0];
             pendingPromises.stream()
-                    .filter(promise -> promise.getCommand().equals("watch-sent"))
+                    .filter(promise -> promise.getCommand().equals("watch-sent") && promise.getKey().equals(key))
                     .forEach(promise -> {
                         executeAllWatchers.execute(promise.getKey(), value);
                     });
