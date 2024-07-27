@@ -25,7 +25,7 @@ class NunDBTest {
     private static final String user = System.getenv("NUN_USER");
     private static final String pwd = System.getenv("NUN_PWD");
 
-    private static final NunDB nun = new NunDB(host, user, pwd);
+    private static final NunDB nun = new NunDB("ws://localhost:3012", "user-name", "user-pwd");
 
     @Test
     @DisplayName("Getting value before setting a value for it")
@@ -104,7 +104,7 @@ class NunDBTest {
 
             nun.addWatch("remove", saveThis);
             nun.set("remove", "initial");
-            Thread.sleep(1);
+            Thread.sleep(50);
             nun.removeWatcher("remove");
             nun.set("remove", "modified");
             waitForWatchers.join();
