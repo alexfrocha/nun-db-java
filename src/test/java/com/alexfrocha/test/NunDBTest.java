@@ -30,7 +30,6 @@ class NunDBTest {
     @Test
     @DisplayName("Getting value before setting a value for it")
     void getTestBeforeSettingValue() {
-        //assertEquals(host, "mateus1");
         nun.createDb("aware", "aware");
         nun.useDb("aware", "aware");
         Object value = nun.get("before").join();
@@ -107,7 +106,7 @@ class NunDBTest {
 
             nun.addWatch("remove", saveThis);
             nun.set("remove", "initial");
-            Thread.sleep(1);
+            Thread.sleep(10);// If we don't block the Thread here it will remove the watch before the event loop have the chance to notify the callback
             nun.removeWatcher("remove");
             nun.set("remove", "modified");
             waitForWatchers.join();

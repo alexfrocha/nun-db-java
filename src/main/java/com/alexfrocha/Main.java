@@ -5,6 +5,7 @@ import com.alexfrocha.enums.Permissions;
 
 import java.util.List;
 
+// Should go to a test project
 public class Main {
     public static void main(String[] args) throws Exception {
         NunDB db = new NunDB("ws://localhost:3012/", "user-name", "user-pwd");
