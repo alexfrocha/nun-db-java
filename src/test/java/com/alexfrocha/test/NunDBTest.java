@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class NunDBTest {
 
-    private static final String host = System.getenv("NUNDB_HOST");
-    private static final String user = System.getenv("NUNDB_USER");
-    private static final String pwd = System.getenv("NUNDB_PWD");
+    private static final String host = System.getenv("NUN_HOST");
+    private static final String user = System.getenv("NUN_USER");
+    private static final String pwd = System.getenv("NUN_PWD");
 
     private static final NunDB nun = new NunDB(host, user, pwd);
 
