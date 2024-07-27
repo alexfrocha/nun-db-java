@@ -67,6 +67,7 @@ public class NunDB {
             container.connectToServer(this, new URI(this.databaseURL));
             this.auth(this.user, this.password);
         } catch (Exception e) {
+            // danger
             logger.severe(e.getMessage());
         }
     }
@@ -74,6 +75,7 @@ public class NunDB {
     private void sendCommand(String command) {
         if (command == null) {
             logger.severe("INSERT A COMMAND! NOT A NULL");
+            // Throw exception
             return;
         }
         this.session.getAsyncRemote().sendText(command);
@@ -198,6 +200,7 @@ public class NunDB {
         try {
             this.session.close();
         } catch (Exception e) {
+            // Change all to logger
             System.out.println(e.getMessage());
         }
     }
@@ -311,7 +314,8 @@ public class NunDB {
         pendingPromises.add(pendingPromiseAck);
 
         pendingPromiseAck.getPromise().thenRun(() -> {
-            logger.info("get-safe message sent for key: " + key);
+            if (this.shouldShowLogs)
+                logger.info("get-safe message sent for key: " + key);
         });
 
         CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise())
@@ -344,7 +348,6 @@ public class NunDB {
         return this.connectionPromise.thenCompose(v -> {
             List<String> permissionsValues = Arrays.stream(permissions).map(e -> e.getValue()).collect(Collectors.toList());
             String command = "set-permissions " + username + " " + String.join("", permissionsValues) + " " + key;
-            System.out.println(command);
             this.sendCommand(command);
             return CompletableFuture.completedFuture(null);
         });
@@ -448,14 +451,12 @@ public class NunDB {
         int ver = localValue == null ? version : localValue.getVersion();
         this.storeLocalValue(name, new LocalValue(objValue, ver, true));
         this.ids.add(objValue.getId());
-        return this.connectionPromise.thenCompose(v -> {
-            String command = "set-safe " + name + " " + ver + " " + (basicType ? value : objToValue(objValue));
-            this.sendCommand(command);
-            PendingPromise pendingPromise = this.createPendingPromise(name, "set");
-            return pendingPromise.getPromise().thenApply(res -> {
-                this.resolvePendingValue(name, ver);
-                return null;
-            });
+        String command = "set-safe " + name + " " + ver + " " + (basicType ? value : objToValue(objValue));
+        this.sendCommand(command);
+        PendingPromise pendingPromise = this.createPendingPromise(name, "set");
+        return pendingPromise.getPromise().thenApply(res -> {
+            this.resolvePendingValue(name, ver);
+            return null;
         });
     }
 

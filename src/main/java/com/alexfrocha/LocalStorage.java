@@ -26,6 +26,7 @@ public class LocalStorage {
             return new Gson().fromJson(jsonValue, LocalValue.class);
         } catch (IOException e) {
             logger.severe("Error on trying to get local value: " + e.getMessage());
+            // Better to fail than to lie
             return null;
         }
     }
