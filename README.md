@@ -1,8 +1,14 @@
 ## Nun DB Java Client
 Just to make it clear, this is not a official client of nun db, is just a fan-made client =)
 
-
-I did not upload on maven/gradle for now, but i'll do, i promise.
+Installing in maven
+```java
+<dependency>
+  <groupId>com.alexfrocha</groupId>
+  <artifactId>nundbjava</artifactId>
+  <version>0.1</version>
+</dependency>
+```
 
 Starting the instance of the client:
 ```java
