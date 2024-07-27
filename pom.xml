@@ -43,4 +43,20 @@
         </dependency>
     </dependencies>
 
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M7</version> <!-- Substitua pela versão mais recente, se necessário -->
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include> <!-- Inclua os arquivos de teste -->
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>
