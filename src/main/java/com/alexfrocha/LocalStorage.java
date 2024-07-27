@@ -2,6 +2,7 @@ package com.alexfrocha;
 
 import com.alexfrocha.data.LocalValue;
 import com.google.gson.Gson;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.IOException;
 import java.nio.file.Files;

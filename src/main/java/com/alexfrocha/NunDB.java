@@ -67,14 +67,15 @@ public class NunDB {
             container.connectToServer(this, new URI(this.databaseURL));
             this.auth(this.user, this.password);
         } catch (Exception e) {
-            logger.severe(e.getMessage());
+            if(this.shouldShowLogs) logger.severe(e.getMessage());
+            throw new IllegalStateException(e.getMessage());
         }
     }
 
     private void sendCommand(String command) {
         if (command == null) {
-            logger.severe("INSERT A COMMAND! NOT A NULL");
-            return;
+            if(this.shouldShowLogs) logger.severe("INSERT A COMMAND! NOT A NULL");
+            throw new IllegalStateException("INSERT A COMMAND! NOT A NULL");
         }
         this.session.getAsyncRemote().sendText(command);
     }
@@ -91,7 +92,7 @@ public class NunDB {
 
     private void checkIfConnectionIsReady() {
         if(this.session == null) {
-            logger.severe("CONNECTION IS NOT READY");
+            if(this.shouldShowLogs) logger.severe("CONNECTION IS NOT READY");
             throw new IllegalStateException("Connection is not ready");
         }
 
@@ -99,9 +100,14 @@ public class NunDB {
 
     private void checkIfDatabaseIsCreated() {
         if(this.databaseName == null && this.databaseToken == null) {
-            logger.severe("Connect to a DB with useDb(name, token)");
+            if(this.shouldShowLogs) logger.severe("Connect to a DB with useDb(name, token)");
             throw new IllegalStateException("Connect to a DB with useDb(name, token)");
         }
+    }
+
+    private void checkConnectionAndDatabase() {
+        checkIfConnectionIsReady();
+        checkIfDatabaseIsCreated();
     }
 
     // WEBSOCKET HANDLER
@@ -110,14 +116,14 @@ public class NunDB {
     public void onOpen(Session session) {
         this.session = session;
         this.setupEvents();
-        logger.info("WebSocket ID: " + session.getId());
+        if(this.shouldShowLogs) logger.info("WebSocket ID: " + session.getId());
         this.connectionPromise.complete(null);
     }
 
     @OnError
     public void onError(Session session, Throwable throwable) {
         if (this.session.isOpen()) {
-            logger.severe(("WebSocket error: " + throwable.getMessage()));
+            if(this.shouldShowLogs) logger.severe(("WebSocket error: " + throwable.getMessage()));
             throw new IllegalStateException(throwable.getMessage());
         } else {
             this.reConnect();
@@ -127,7 +133,7 @@ public class NunDB {
     @OnClose
     public void onClose(Session session, CloseReason closeReason) {
         this.session = null;
-        logger.severe("Closed Websocket cause? " + closeReason);
+        if(this.shouldShowLogs) logger.severe("Closed Websocket cause? " + closeReason);
         this.reConnect();
     }
 
@@ -198,7 +204,7 @@ public class NunDB {
         try {
             this.session.close();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            if(this.shouldShowLogs) logger.severe(e.getMessage());
         }
     }
 
@@ -208,8 +214,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> addWatch(String name, Watcher cb) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("watch " + name);
             this.createPendingPromise(name, "watch-sent");
@@ -219,8 +224,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> removeAllWatchers() {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("unwatch-all");
             this.watchers.clear();
@@ -229,8 +233,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> removeWatcher(String name) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("unwatch " + name);
             this.watchers.remove(name);
@@ -239,8 +242,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> increment(String name, Number value) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("increment " + name + " " + value);
             return CompletableFuture.completedFuture(null);
@@ -248,8 +250,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> remove(String key) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("remove " + key);
             return CompletableFuture.completedFuture(null);
@@ -257,17 +258,15 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> showWatchers() {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
-            System.out.println(this.watchers);
+            if(this.shouldShowLogs) logger.severe("[WATCHERS]: " + this.watchers);
             return CompletableFuture.completedFuture(null);
         });
     }
 
     private void executeAllWatchers(String key, Object data) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         List<Watcher> watchersList = this.watchers.get(key);
         if (watchersList != null) {
             for (Watcher cb : watchersList) {
@@ -281,7 +280,8 @@ public class NunDB {
             try {
                 Thread.sleep(RECONNECT_TIME);
             } catch (InterruptedException e) {
-                System.out.println(e.getMessage());
+                if(this.shouldShowLogs) logger.severe(e.getMessage());
+                throw new IllegalStateException(e.getMessage());
             }
             this.connect();
         }
@@ -311,7 +311,7 @@ public class NunDB {
         pendingPromises.add(pendingPromiseAck);
 
         pendingPromiseAck.getPromise().thenRun(() -> {
-            logger.info("get-safe message sent for key: " + key);
+            if(this.shouldShowLogs)  logger.info("get-safe message sent for key: " + key);
         });
 
         CompletableFuture.allOf(pendingPromise.getPromise(), pendingPromiseAck.getPromise())
@@ -321,8 +321,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> createUser(String username, String password) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("create-user " + username + " " + password);
             return CompletableFuture.completedFuture(null);
@@ -330,8 +329,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> setPermissions(String username, String payload) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("set-permissions " + payload);
             return CompletableFuture.completedFuture(null);
@@ -339,12 +337,10 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> setPermissions(String username, String key, Permissions... permissions) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             List<String> permissionsValues = Arrays.stream(permissions).map(e -> e.getValue()).collect(Collectors.toList());
             String command = "set-permissions " + username + " " + String.join("", permissionsValues) + " " + key;
-            System.out.println(command);
             this.sendCommand(command);
             return CompletableFuture.completedFuture(null);
         });
@@ -352,8 +348,7 @@ public class NunDB {
 
 
     public CompletableFuture<Object> get(String key) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.getValueSafe(key);
     }
 
@@ -369,8 +364,7 @@ public class NunDB {
     }
 
     public CompletableFuture<List<String>> allKeys() {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = this.createPendingPromise("", "keys");
         this.sendCommand("keys ");
@@ -381,8 +375,7 @@ public class NunDB {
     }
 
     public CompletableFuture<List<String>> keysStartingWith(String prefix) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = this.createPendingPromise(prefix, "keys");
         this.sendCommand("keys " + prefix + "*");
@@ -393,8 +386,7 @@ public class NunDB {
     }
 
     public CompletableFuture<List<String>> keysEndingWith(String suffix) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = this.createPendingPromise(suffix, "keys");
         this.sendCommand("keys *" + suffix);
@@ -405,8 +397,7 @@ public class NunDB {
     }
 
     public CompletableFuture<List<String>> keysContains(String supposedText) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         CompletableFuture<List<String>> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = this.createPendingPromise(supposedText, "keys");
         this.sendCommand("keys " + supposedText);
@@ -418,8 +409,7 @@ public class NunDB {
 
 
     public CompletableFuture<Object> getClusterState() {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         CompletableFuture<Object> resultPromise = new CompletableFuture<>();
         PendingPromise pendingPromise = this.createPendingPromise("", "cluster-state");
         pendingPromises.add(pendingPromise);
@@ -441,8 +431,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> setValueSafe(String name, String value, int version, boolean basicType) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         LocalValue localValue = this.getLocalValue(name);
         Value objValue = new Value(this.nextMessageId(), value);
         int ver = localValue == null ? version : localValue.getVersion();
@@ -465,7 +454,7 @@ public class NunDB {
         return this.connectionPromise.thenCompose(v -> {
             if(!databases.contains(name)) {
                 this.sendCommand("create-db " + name + " " + token);
-                logger.info( name + " DB CREATED");
+                if(this.shouldShowLogs) logger.info( name + " DB CREATED");
                 this.databaseName = name;
                 this.databaseToken = token;
             }
@@ -477,7 +466,7 @@ public class NunDB {
         checkIfConnectionIsReady();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("auth " + user + " " + password);
-            logger.info("LOGGED [**********, ********]");
+            if(this.shouldShowLogs) logger.info("LOGGED [**********, ********]");
             return CompletableFuture.completedFuture(null);
         });
     }
@@ -503,8 +492,7 @@ public class NunDB {
     }
 
     public CompletableFuture<Void> snapshot(boolean reclaimSpace) {
-        checkIfConnectionIsReady();
-        checkIfDatabaseIsCreated();
+        checkConnectionAndDatabase();
         return this.connectionPromise.thenCompose(v -> {
             this.sendCommand("snapshot " + reclaimSpace + " " + this.databaseName);
             return CompletableFuture.completedFuture(null);
