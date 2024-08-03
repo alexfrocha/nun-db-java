@@ -25,7 +25,7 @@ jobs:
 
       - name: Run NunDb and Tests
         run: |
-          docker run --env NUN_HOST=0.0.0.0:3012 --env NUN_USER=user-name --env NUN_PWD=user-pwd --env NUN_DBS_DIR="/data" \
+          docker run --env NUN_USER=user-name --env NUN_PWD=user-pwd --env NUN_DBS_DIR="/data" \
             --mount type=bind,source="/tmp",target=/data -it --rm -p 3013:3013 -p 3012:3012 -p 3014:3014 --name nun-test mateusfreira/nun-db &
           
           sleep 3
