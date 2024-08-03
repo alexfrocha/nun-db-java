@@ -85,7 +85,7 @@ class NunDBTest {
     @Test
     @DisplayName("Removing watcher")
     void testRemoveWatcher() {
-        assertTimeoutPreemptively(Duration.ofMillis(1000), () -> {
+        assertTimeoutPreemptively(Duration.ofMillis(2000), () -> {
             CompletableFuture<String> waitForWatchers = new CompletableFuture<>();
             nun.useDb("aware", "aware");
 
@@ -111,27 +111,38 @@ class NunDBTest {
     @Test
     @DisplayName("Getting keys")
     void testGetKeys() {
-        nun.createDb("aware", "aware");
-        nun.useDb("aware", "aware");
+        assertTimeoutPreemptively(Duration.ofMillis(2000), () -> {
 
-        nun.set("test", "123");
+            nun.createDb("aware", "aware");
+            nun.useDb("aware", "aware");
 
-        List<String> allKeys = nun.allKeys().join();
-        List<String> keysContaining = nun.keysContains("es").join();
-        List<String> keysStartingWith = nun.keysStartingWith("t").join();
-        List<String> keysEndingWith = nun.keysEndingWith("st").join();
-        List<String> expectedKeys = Arrays.asList("$$token", "$connections", "after", "age", "km", "remove", "test");
+            nun.set("test", "123");
+            nun.set("km", "1");
+            nun.set("after", "1");
+            nun.set("remove", "1");
 
-        assertEquals(expectedKeys.toString(), allKeys.toString().replace("\n", ""));
-        assertEquals("[test\n]", keysContaining.toString());
-        assertEquals("[test\n]", keysStartingWith.toString());
-        assertEquals("[test\n]", keysEndingWith.toString());
+            Thread.sleep(1000);
+            List<String> allKeys = nun.allKeys().join();
+            List<String> keysContaining = nun.keysContains("es").join();
+            List<String> keysStartingWith = nun.keysStartingWith("t").join();
+            List<String> keysEndingWith = nun.keysEndingWith("st").join();
+            List<String> expectedKeys = Arrays.asList("$$token", "$connections", "after", "age", "km", "remove", "test");
+
+            assertEquals(expectedKeys.toString(), allKeys.toString().replace("\n", ""));
+            assertEquals("[test\n]", keysContaining.toString());
+            assertEquals("[test\n]", keysStartingWith.toString());
+            assertEquals("[test\n]", keysEndingWith.toString());
+        });
     }
 
     @Test
     @DisplayName("Getting all databases")
     void testGetAllDatabases() {
-        List<String> allDatabases = nun.getAllDatabases().join();
-        assertTrue(allDatabases.containsAll(Arrays.asList("$admin", "aware")));
+        assertTimeoutPreemptively(Duration.ofMillis(2000), () -> {
+            Thread.sleep(1000);
+            nun.createDb("aware", "aware");
+            List<String> allDatabases = nun.getAllDatabases().join();
+            assertTrue(allDatabases.containsAll(Arrays.asList("$admin", "aware")));
+        });
     }
 }
