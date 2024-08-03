@@ -24,6 +24,6 @@ jobs:
         java-version: '11'
 
     - name: Run NunDb and test
-      run: docker run -d --env NUN_USER=js --env NUN_PWD=js --env NUN_DBS_DIR="/data" --mount type=bind,source="/tmp",target=/data -it --rm -p 3013:3013 -p 3012:3012 -p 3014:3014 --name nun-test mateusfreira/nun-db
+      run: docker run -d --env NUN_USER=user-name --env NUN_PWD=user-pwd --env NUN_DBS_DIR="/data" --mount type=bind,source="/tmp",target=/data -it --rm -p 3013:3013 -p 3012:3012 -p 3014:3014 --name nun-test mateusfreira/nun-db
     - run: sleep 3
     - run: mvn test
