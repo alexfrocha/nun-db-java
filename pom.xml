@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.alexfrocha</groupId>
-    <artifactId>NunDBJava</artifactId>
+    <groupId>org</groupId>
+    <artifactId>nundb</artifactId>
     <version>0.1</version>
     <description>
         This project is a way to connect nundb cluster with java in a easy and simple way.
